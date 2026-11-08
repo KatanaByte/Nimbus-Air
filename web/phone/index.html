@@ -295,45 +295,63 @@ function buildControls(){
 /* ---------- Bluetooth ---------- */
 function setConn(text, on){ $('conn').textContent=text; $('dot').classList.toggle('on', !!on); }
 
+// Runs one Bluetooth step with a visible label and an 8-second limit, so a
+// step that never answers (seen in some iPhone browsers) becomes a clear error.
+function step(label, fn, ms=8000){
+  setConn(label);
+  return Promise.race([ fn(), new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('Timed out at: '+label.replace(/…$/,'')),{name:'TimeoutError'})), ms)) ]);
+}
+// Some iPhone browsers lack writeValueWithResponse; fall back to writeValue.
+const bleWrite=(c,data)=> c.writeValueWithResponse ? c.writeValueWithResponse(data) : c.writeValue(data);
+
 async function connect(){
   if(!navigator.bluetooth){ $('nobt').classList.remove('hidden'); return; }
   $('connErr').classList.add('hidden');
+  const extrasFailed=[];
   try{
     if(!dev){
       dev = await navigator.bluetooth.requestDevice({
         filters:[{services:[AC.UUIDS.svc]},{namePrefix:'Nimbus'},{name:'AirCube'}], optionalServices:[AC.UUIDS.svc] });
       dev.addEventListener('gattserverdisconnected', onDisconnected);
     }
-    setConn('Connecting…');
     $('connectBtn').disabled=true;
     // The cube allows one connection; after a page refresh the old link can
     // linger for a few seconds, so retry a few times before giving up.
     let server;
     for(let i=0;;i++){
-      try{ server = await dev.gatt.connect(); break; }
-      catch(e){ if(i>=3) throw e; setConn(`Retrying… (${i+1}/3)`); await new Promise(r=>setTimeout(r,2500)); }
+      try{ server = await step(i ? `Retrying… (${i}/3)` : 'Connecting…', ()=>dev.gatt.connect(), 12000); break; }
+      catch(e){ if(i>=3) throw e; await new Promise(r=>setTimeout(r,2500)); }
     }
-    const svc = await server.getPrimaryService(AC.UUIDS.svc);
-    for(const k of ['info','live','hreq','hdata','bright']) ch[k]=await svc.getCharacteristic(AC.UUIDS[k]);
-
-    info = AC.parseInfo(await ch.info.readValue());
+    // Required: the service, device info and live readings.
+    const svc = await step('Finding the cube’s data…', ()=>server.getPrimaryService(AC.UUIDS.svc));
+    ch.info = await step('Opening device info…', ()=>svc.getCharacteristic(AC.UUIDS.info));
+    ch.live = await step('Opening live readings…', ()=>svc.getCharacteristic(AC.UUIDS.live));
+    info = AC.parseInfo(await step('Reading device info…', ()=>ch.info.readValue()));
     $('devInfo').textContent = `Nimbus-Air ${info.pro?'Pro':'Base'} · firmware ${info.fw} · ${info.count} history points on device`;
-
     ch.live.addEventListener('characteristicvaluechanged', e=>{ live=AC.parseLive(e.target.value); store.lastLive={...live, at:Date.now()}; renderLive(); });
-    live = AC.parseLive(await ch.live.readValue()); renderLive();
-    await ch.live.startNotifications();
+    live = AC.parseLive(await step('Reading live data…', ()=>ch.live.readValue())); renderLive();
+    await step('Starting live updates…', ()=>ch.live.startNotifications());
 
-    ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0)));
-    showBrightness((await ch.bright.readValue()).getUint8(0));
-    await ch.bright.startNotifications();
+    // Optional: brightness and history. If one misbehaves, keep the live view.
+    try{
+      ch.bright = await step('Opening brightness…', ()=>svc.getCharacteristic(AC.UUIDS.bright));
+      ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0)));
+      showBrightness((await step('Reading brightness…', ()=>ch.bright.readValue())).getUint8(0));
+      await step('Watching brightness…', ()=>ch.bright.startNotifications());
+      $('lightCard').classList.remove('hidden');
+    }catch(e){ console.warn(e); extrasFailed.push('brightness'); }
+    try{
+      ch.hreq = await step('Opening history…', ()=>svc.getCharacteristic(AC.UUIDS.hreq));
+      ch.hdata = await step('Opening history data…', ()=>svc.getCharacteristic(AC.UUIDS.hdata));
+      ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame);
+      await step('Starting history…', ()=>ch.hdata.startNotifications());
+      $('syncBtn').disabled=false;
+    }catch(e){ console.warn(e); delete ch.hreq; extrasFailed.push('history'); }
 
-    ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame);
-    await ch.hdata.startNotifications();
-
-    $('welcome').classList.add('hidden'); $('lightCard').classList.remove('hidden');
-    $('syncBtn').disabled=false; $('discBtn').classList.remove('hidden');
+    $('welcome').classList.add('hidden'); $('discBtn').classList.remove('hidden');
     setConn('Connected', true); buildControls();
-    syncHistory();
+    if(extrasFailed.length) $('devInfo').textContent += ` · ${extrasFailed.join(' and ')} unavailable in this browser`;
+    if(ch.hreq) syncHistory();
   }catch(err){
     console.error(err);
     const cancelled = err.name==='NotFoundError' && /cancel/i.test(err.message||'');
@@ -344,9 +362,10 @@ async function connect(){
       const m = (err.message || err.name || 'Unknown error').replace(/\.+$/,'');
       let hint = '';
       if(/disabled|not available|adapter|unsupported/i.test(m)) hint = ' Check that Bluetooth is on. In Brave, enable Web Bluetooth in brave://flags, or use Chrome or Edge.';
-      else if(/GATT|unknown reason|disconnect|network/i.test(m)) hint = ' The cube may still be holding an old connection. Wait 30 seconds, or unplug it for 5 seconds, then try again.';
+      else if(/GATT|unknown reason|disconnect|network|timed out/i.test(m)) hint = ' The cube may still be holding an old connection. Wait 30 seconds, or unplug it for 5 seconds, then try again.';
       $('connErr').textContent = 'Could not connect: ' + m + '.' + hint;
       $('connErr').classList.remove('hidden');
+      try{ dev && dev.gatt.connected && dev.gatt.disconnect(); }catch(e){}
     }
   }
 }
@@ -362,7 +381,7 @@ function showBrightness(v){ $('br').value=v; $('brVal').textContent = v===0?'Off
 function setBrightness(v){
   $('brVal').textContent = v==0?'Off':v+'%';
   clearTimeout(brTimer);
-  brTimer=setTimeout(()=>{ ch.bright && ch.bright.writeValueWithResponse(Uint8Array.of(Number(v))).catch(console.error); }, 150);
+  brTimer=setTimeout(()=>{ ch.bright && bleWrite(ch.bright, Uint8Array.of(Number(v))).catch(console.error); }, 150);
 }
 
 /* ---------- history sync ---------- */
@@ -379,7 +398,7 @@ function streamOnce(after){
     const p={ slots:[], resolve:()=>{clearTimeout(timer); pendingSync=null; resolve(p.slots);},
               reject:e=>{clearTimeout(timer); pendingSync=null; reject(e);} };
     pendingSync=p;
-    ch.hreq.writeValueWithResponse(AC.historyRequest(after)).catch(p.reject);
+    bleWrite(ch.hreq, AC.historyRequest(after)).catch(p.reject);
   });
 }
 async function syncHistory(){
