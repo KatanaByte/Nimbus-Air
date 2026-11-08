@@ -9,6 +9,10 @@ alongside a manifest the flasher reads.
 Run from the repository root with the `gh` CLI authenticated:
 
     python3 scripts/build_web_manifest.py
+
+Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0).
+Changes: default repo is KatanaByte/Nimbus-Air; accepts Nimbus-Air_firmware_*.bin
+release assets (AirCube_firmware_*.bin still accepted for older releases).
 """
 from __future__ import annotations
 
@@ -21,17 +25,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO = os.environ.get("GITHUB_REPOSITORY", "StuckAtPrototype/AirCube")
+REPO = os.environ.get("GITHUB_REPOSITORY", "KatanaByte/Nimbus-Air")
 OUT_DIR = Path("web/firmware")
-ASSET_PATTERN = re.compile(r"^AirCube_firmware_v[\d.]+\.bin$")
+ASSET_PATTERN = re.compile(r"^(Nimbus-Air|AirCube)_firmware_v[\d.]+\.bin$")
 VERSION_PATTERN = re.compile(r"\d+(?:\.\d+)*")
 KEEP_RELEASES = 5
 FLASH_ADDRESS = "0x0"
 
 
 def version_of(tag: str, filename: str) -> str:
-    """Releases have been tagged Release_v2.0.1, Release_V1.4.3 and Release_1.4.2,
-    and one asset shipped as v.1.4.3, so read the digits and drop the decoration.
+    """Read the version digits from the tag (e.g. v2.0.7 or Release_v2.0.1)
+    and drop any decoration; fall back to the asset filename.
     """
     match = VERSION_PATTERN.search(tag) or VERSION_PATTERN.search(filename)
     return match.group(0) if match else tag
