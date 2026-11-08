@@ -1,0 +1,55 @@
+name: Build Nimbus-Air Firmware
+
+# Compiles the ESP32-H2 firmware on GitHub's servers and hands back one merged
+# .bin (bootloader + partition table + app) that the web flasher writes at 0x0.
+# Download it from the run's "Artifacts" section, then attach it to a release.
+
+on:
+  push:
+    branches: [Nimbus-Air]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware.yml"
+  workflow_dispatch:
+    inputs:
+      idf_version:
+        description: "ESP-IDF version (Docker tag, e.g. latest, v6.0, v5.5.1)"
+        default: "latest"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read firmware version
+        id: ver
+        run: echo "version=$(tr -d '[:space:]' < firmware/version.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ inputs.idf_version || 'latest' }}
+          target: esp32h2
+          path: firmware
+          command: >-
+            idf.py set-target esp32h2 && idf.py build &&
+            (idf.py merge-bin -o merged.bin ||
+             (cd build && python -m esptool --chip esp32h2 merge_bin -o merged.bin @flash_args))
+
+      - name: Name the image
+        run: |
+          merged=$(find firmware/build -maxdepth 1 -name 'merged*.bin' | head -n 1)
+          test -n "$merged" || { echo "merged image not found"; ls -la firmware/build; exit 1; }
+          cp "$merged" "Nimbus-Air_firmware_v${{ steps.ver.outputs.version }}.bin"
+          ls -la Nimbus-Air_firmware_v*.bin
+          sha256sum Nimbus-Air_firmware_v*.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nimbus-Air_firmware_v${{ steps.ver.outputs.version }}
+          path: Nimbus-Air_firmware_v${{ steps.ver.outputs.version }}.bin
+          if-no-files-found: error
