@@ -120,7 +120,7 @@ a{color:var(--accent)}
     <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
   </section>
 
-  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 5</p>
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 6</p>
 </div>
 
 <script id="core">
@@ -297,9 +297,20 @@ function setConn(text, on){ $('conn').textContent=text; $('dot').classList.toggl
 
 // Runs one Bluetooth step with a visible label and an 8-second limit, so a
 // step that never answers (seen in some iPhone browsers) becomes a clear error.
+let curStep='';
 function step(label, fn, ms=8000){
+  curStep=label.replace(/…$/,'');
   setConn(label);
   return Promise.race([ fn(), new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('Timed out at: '+label.replace(/…$/,'')),{name:'TimeoutError'})), ms)) ]);
+}
+// Turn anything a browser rejects with (Error, string, plain object, nothing) into readable text.
+function errText(e){
+  if(e==null) return 'no details';
+  if(typeof e==='string') return e;
+  const parts=[e.name,e.message,e.code!=null?'code '+e.code:''].filter(Boolean);
+  if(parts.length) return parts.join(': ');
+  try{ const j=JSON.stringify(e); if(j && j!=='{}') return j; }catch(_){}
+  const s=String(e); return s==='[object Object]' ? 'empty error, no details' : s;
 }
 // Some iPhone browsers lack writeValueWithResponse; fall back to writeValue.
 const bleWrite=(c,data)=> c.writeValueWithResponse ? c.writeValueWithResponse(data) : c.writeValue(data);
@@ -324,8 +335,16 @@ async function connect(){
     }
     // Required: the service, device info and live readings.
     const svc = await step('Finding the cube’s data…', ()=>server.getPrimaryService(AC.UUIDS.svc));
-    ch.info = await step('Opening device info…', ()=>svc.getCharacteristic(AC.UUIDS.info));
-    ch.live = await step('Opening live readings…', ()=>svc.getCharacteristic(AC.UUIDS.live));
+    // Ask for every feature in one request (gentler on iPhone browsers), then
+    // fall back to one-at-a-time for anything that didn't come back.
+    const found={};
+    try{
+      const all = await step('Listing features…', ()=>svc.getCharacteristics());
+      for(const c of all) found[String(c.uuid).toLowerCase()]=c;
+    }catch(e){ console.warn('getCharacteristics failed', e); }
+    const getChar=(k,label)=> found[AC.UUIDS[k]] ? Promise.resolve(found[AC.UUIDS[k]]) : step(label, ()=>svc.getCharacteristic(AC.UUIDS[k]));
+    ch.info = await getChar('info','Opening device info…');
+    ch.live = await getChar('live','Opening live readings…');
     info = AC.parseInfo(await step('Reading device info…', ()=>ch.info.readValue()));
     $('devInfo').textContent = `Nimbus-Air ${info.pro?'Pro':'Base'} · firmware ${info.fw} · ${info.count} history points on device`;
     ch.live.addEventListener('characteristicvaluechanged', e=>{ live=AC.parseLive(e.target.value); store.lastLive={...live, at:Date.now()}; renderLive(); });
@@ -334,20 +353,20 @@ async function connect(){
 
     // Optional: brightness and history. If one misbehaves, keep the live view.
     try{
-      ch.bright = await step('Opening brightness…', ()=>svc.getCharacteristic(AC.UUIDS.bright));
+      ch.bright = await getChar('bright','Opening brightness…');
       ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0)));
       showBrightness((await step('Reading brightness…', ()=>ch.bright.readValue())).getUint8(0));
       $('lightCard').classList.remove('hidden');   // the slider works with read + write alone
       try{ await step('Watching brightness…', ()=>ch.bright.startNotifications()); }
-      catch(e){ console.warn(e); extrasFailed.push('brightness updates ('+e.message+')'); }
-    }catch(e){ console.warn(e); delete ch.bright; extrasFailed.push('brightness ('+e.message+')'); }
+      catch(e){ console.warn(e); extrasFailed.push('brightness updates (at '+curStep+': '+errText(e)+')'); }
+    }catch(e){ console.warn(e); delete ch.bright; extrasFailed.push('brightness (at '+curStep+': '+errText(e)+')'); }
     try{
-      ch.hreq = await step('Opening history…', ()=>svc.getCharacteristic(AC.UUIDS.hreq));
-      ch.hdata = await step('Opening history data…', ()=>svc.getCharacteristic(AC.UUIDS.hdata));
+      ch.hreq = await getChar('hreq','Opening history…');
+      ch.hdata = await getChar('hdata','Opening history data…');
       ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame);
       await step('Starting history…', ()=>ch.hdata.startNotifications());
       $('syncBtn').disabled=false;
-    }catch(e){ console.warn(e); delete ch.hreq; extrasFailed.push('history ('+e.message+')'); }
+    }catch(e){ console.warn(e); delete ch.hreq; extrasFailed.push('history (at '+curStep+': '+errText(e)+')'); }
 
     $('welcome').classList.add('hidden'); $('discBtn').classList.remove('hidden');
     setConn('Connected', true); buildControls();
@@ -360,7 +379,7 @@ async function connect(){
     $('connectBtn').disabled=false;
     if(!cancelled){
       $('connectBtn').textContent='Try again';
-      const m = (err.message || err.name || 'Unknown error').replace(/\.+$/,'');
+      const m = ((err && err.message) || errText(err) || 'Unknown error').replace(/\.+$/,'') + (curStep && !/Timed out/.test(err && err.message||'') ? ' (at '+curStep+')' : '');
       let hint = '';
       if(/disabled|not available|adapter|unsupported/i.test(m)) hint = ' Check that Bluetooth is on. In Brave, enable Web Bluetooth in brave://flags, or use Chrome or Edge.';
       else if(/GATT|unknown reason|disconnect|network|timed out/i.test(m)) hint = ' The cube may still be holding an old connection. Wait 30 seconds, or unplug it for 5 seconds, then try again.';
