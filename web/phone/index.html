@@ -120,7 +120,7 @@ a{color:var(--accent)}
     <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
   </section>
 
-  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 8</p>
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 9</p>
 </div>
 
 <script id="core">
@@ -198,7 +198,7 @@ function prune(){ const cut=Date.now()-60*864e5; for(const k in store.slots) if(
 
 /* ---------- state ---------- */
 const $=id=>document.getElementById(id);
-let dev=null, ch={}, info=null, live=null, syncing=false, pendingSync=null, brTimer=null;
+let dev=null, ch={}, info=null, live=null, syncing=false, pendingSync=null, brTimer=null, gattServer=null;
 let metric='co2', rangeH=24;
 
 /* ---------- formatting ---------- */
@@ -313,6 +313,25 @@ function errText(e){
   try{ const j=JSON.stringify(e); if(j && j!=='{}') return j; }catch(_){}
   const s=String(e); return s==='[object Object]' ? 'empty error, no details' : s;
 }
+// If the phone's map of the cube went stale (error "invalid handle"), look every
+// feature up again, re-subscribe, and hand back fresh objects.
+async function refreshChars(){
+  const svc = await gattServer.getPrimaryService(AC.UUIDS.svc);
+  const all = await svc.getCharacteristics();
+  const by = {}; for(const c of all) by[String(c.uuid).toLowerCase()] = c;
+  for(const k of ['info','live','hreq','hdata','bright']){ if(by[AC.UUIDS[k]]) ch[k] = by[AC.UUIDS[k]]; }
+  if(ch.live){ ch.live.addEventListener('characteristicvaluechanged', e=>{ live=AC.parseLive(e.target.value); store.lastLive={...live, at:Date.now()}; renderLive(); }); try{ await ch.live.startNotifications(); }catch(_){} }
+  if(ch.bright){ ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0))); try{ await ch.bright.startNotifications(); }catch(_){} }
+  if(ch.hdata){ ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame); try{ await ch.hdata.startNotifications(); }catch(_){} }
+}
+async function writeKey(k, bytes){
+  try{ return await bleWrite(ch[k], bytes); }
+  catch(e){
+    if(!gattServer || !gattServer.connected) throw e;
+    await refreshChars();
+    return await bleWrite(ch[k], bytes);
+  }
+}
 // Writing bytes: Chrome/Edge accept any form, but some iPhone browsers only
 // manage certain ones. Try the forms in turn; remember which one worked.
 let writeWay=null;
@@ -354,6 +373,10 @@ async function connect(){
       catch(e){ if(i>=3) throw e; await new Promise(r=>setTimeout(r,2500)); }
     }
     // Required: the service, device info and live readings.
+    gattServer = server;
+    // The cube tells iPhones "my features changed" 1.5 s after every connect, which
+    // invalidates anything looked up before then. Wait it out, then look up.
+    await step('Getting ready…', ()=>new Promise(r=>setTimeout(r,2500)), 5000);
     const svc = await step('Finding the cube’s data…', ()=>server.getPrimaryService(AC.UUIDS.svc));
     // Ask for every feature in one request (gentler on iPhone browsers), then
     // fall back to one-at-a-time for anything that didn't come back.
@@ -421,7 +444,7 @@ function showBrightness(v){ $('br').value=v; $('brVal').textContent = v===0?'Off
 function setBrightness(v){
   $('brVal').textContent = v==0?'Off':v+'%';
   clearTimeout(brTimer);
-  brTimer=setTimeout(()=>{ ch.bright && bleWrite(ch.bright, Uint8Array.of(Number(v))).catch(e=>{ console.error(e); $('brVal').textContent='Could not set: '+(e.message||errText(e)); }); }, 150);
+  brTimer=setTimeout(()=>{ ch.bright && writeKey('bright', Uint8Array.of(Number(v))).catch(e=>{ console.error(e); $('brVal').textContent='Could not set: '+(e.message||errText(e)); }); }, 150);
 }
 
 /* ---------- history sync ---------- */
@@ -445,7 +468,7 @@ function streamOnce(after, quietMs=10000){
     pendingSync=p; p.touch();
     // Try write-with-response first; some iPhone browsers only manage plain writes.
     const req=AC.historyRequest(after);
-    bleWrite(ch.hreq, req).catch(e=>p.reject(Object.assign(new Error('request write failed: '+(e.message||errText(e))),{code:'write'})));
+    writeKey('hreq', req).catch(e=>p.reject(Object.assign(new Error('request write failed: '+(e.message||errText(e))),{code:'write'})));
   });
 }
 async function syncHistory(){
