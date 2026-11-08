@@ -120,7 +120,7 @@ a{color:var(--accent)}
     <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
   </section>
 
-  <p class="foot">Everything stays on this phone. Nothing is uploaded.</p>
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 5</p>
 </div>
 
 <script id="core">
@@ -337,20 +337,21 @@ async function connect(){
       ch.bright = await step('Opening brightness…', ()=>svc.getCharacteristic(AC.UUIDS.bright));
       ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0)));
       showBrightness((await step('Reading brightness…', ()=>ch.bright.readValue())).getUint8(0));
-      await step('Watching brightness…', ()=>ch.bright.startNotifications());
-      $('lightCard').classList.remove('hidden');
-    }catch(e){ console.warn(e); extrasFailed.push('brightness'); }
+      $('lightCard').classList.remove('hidden');   // the slider works with read + write alone
+      try{ await step('Watching brightness…', ()=>ch.bright.startNotifications()); }
+      catch(e){ console.warn(e); extrasFailed.push('brightness updates ('+e.message+')'); }
+    }catch(e){ console.warn(e); delete ch.bright; extrasFailed.push('brightness ('+e.message+')'); }
     try{
       ch.hreq = await step('Opening history…', ()=>svc.getCharacteristic(AC.UUIDS.hreq));
       ch.hdata = await step('Opening history data…', ()=>svc.getCharacteristic(AC.UUIDS.hdata));
       ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame);
       await step('Starting history…', ()=>ch.hdata.startNotifications());
       $('syncBtn').disabled=false;
-    }catch(e){ console.warn(e); delete ch.hreq; extrasFailed.push('history'); }
+    }catch(e){ console.warn(e); delete ch.hreq; extrasFailed.push('history ('+e.message+')'); }
 
     $('welcome').classList.add('hidden'); $('discBtn').classList.remove('hidden');
     setConn('Connected', true); buildControls();
-    if(extrasFailed.length) $('devInfo').textContent += ` · ${extrasFailed.join(' and ')} unavailable in this browser`;
+    if(extrasFailed.length) $('devInfo').textContent += ` · unavailable in this browser: ${extrasFailed.join('; ')}`;
     if(ch.hreq) syncHistory();
   }catch(err){
     console.error(err);
