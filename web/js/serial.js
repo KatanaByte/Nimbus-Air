@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Web Serial transport for one AirCube.
  *
  * Browser analogue of aircubeapp/transports/serial_transport.py. The device
@@ -28,7 +29,7 @@ export const WRITE_STALL_MS = 1500;
 const CLOSE_TIMEOUT_MS = 4000;
 
 export const STALLED_MESSAGE =
-  "The AirCube is not accepting data over USB. Its firmware is too old to take " +
+  "The Nimbus-Air is not accepting data over USB. Its firmware is too old to take " +
   "commands on this port; update the firmware to fix this. If flashing fails, " +
   "unplug the cube, plug it back in and try again.";
 

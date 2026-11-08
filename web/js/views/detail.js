@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Device detail: hero verdict and gauge, metric tiles, LED brightness,
  * advanced drawer, and the history chart.
  * Ports DetailPage from aircubetray/aircubeapp/ui/detail.py.
@@ -81,15 +82,15 @@ export class DetailView {
 
   _build() {
     // --- header ---------------------------------------------------------
-    this.title = h("h1.detail-title", { text: "AirCube" });
-    this.typePill = pill("AirCube");
+    this.title = h("h1.detail-title", { text: "Nimbus-Air" });
+    this.typePill = pill("Nimbus-Air");
     this.connDot = statusDot();
     this.connLabel = h("span.faint");
     this.backBtn = h("button.toolbtn", {
       type: "button",
       text: "\u2190",
-      title: "Back to all AirCubes",
-      "aria-label": "Back to all AirCubes",
+      title: "Back to all cubes",
+      "aria-label": "Back to all cubes",
       onclick: () => this.onBack(),
     });
     this.menuBtn = h("button.toolbtn", {
@@ -359,7 +360,7 @@ export class DetailView {
   }
 
   async _rename() {
-    const name = await promptDialog("Rename AirCube", "Name", this.device.name);
+    const name = await promptDialog("Rename Nimbus-Air", "Name", this.device.name);
     if (name) {
       this.device.rename(name);
       this.refresh();

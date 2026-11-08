@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Firmware flashing over Web Serial via esptool-js.
  *
  * Mirrors aircubeapp/flash/flasher.py: chip esp32h2, 460800 baud, merged
@@ -80,7 +81,7 @@ export async function flashDevice({
       // full, and the browser may keep the port open until that settles.
       if (err?.name === "InvalidStateError" || /already open/i.test(err?.message || "")) {
         throw new Error(
-          "The browser could not release the serial port. Unplug the AirCube, plug it back in, and flash again.",
+          "The browser could not release the serial port. Unplug the Nimbus-Air, plug it back in, and flash again.",
         );
       }
       throw err;
@@ -110,7 +111,7 @@ export async function flashDevice({
 
     log("Resetting the device...");
     await rebootIntoApp(transport);
-    log("Done. The AirCube is rebooting into the new firmware.", "ok");
+    log("Done. The Nimbus-Air is rebooting into the new firmware.", "ok");
   } finally {
     try {
       await transport.disconnect();

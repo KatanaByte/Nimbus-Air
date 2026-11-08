@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* AirCube USB serial wire protocol.
  *
  * Port of the JSON-lines half of aircubetray/aircubeapp/protocol.py, which
@@ -44,7 +45,7 @@ const num = (v) => {
  * Firmware from 2026-02-08 onwards (release 1.3 and later) reads the USB port.
  */
 export const LEGACY_FIRMWARE_MESSAGE =
-  "This AirCube runs firmware from before February 2026, which cannot receive " +
+  "This Nimbus-Air runs firmware from before February 2026, which cannot receive " +
   "commands over USB. Live readings work, but brightness, history and settings " +
   "need a firmware update. Updating takes about 30 seconds.";
 

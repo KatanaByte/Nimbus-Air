@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Home: the grid of device cards.
  * Ports DeviceCard / HomePage from aircubetray/aircubeapp/ui/home.py.
  */
@@ -26,7 +27,7 @@ class DeviceCard {
 
     this.dot = statusDot();
     this.name = h("span.device-name");
-    this.typePill = pill("AirCube");
+    this.typePill = pill("Nimbus-Air");
     this.statusPill = pill("Waiting...");
 
     this.vocValue = h("div", { class: "value", text: "--" });
@@ -205,7 +206,7 @@ export class HomeView {
     this.empty = h(
       "div.empty-state",
       h("span.glyph", { text: "\u2b1c" }),
-      h("div", { text: "No AirCubes yet." }),
+      h("div", { text: "No cubes connected yet." }),
       h("div", { text: "Plug one in over USB-C and click Connect." }),
     );
 
@@ -213,7 +214,7 @@ export class HomeView {
       "div.column",
       h(
         "div.page-header",
-        h("h1.page-title", { text: "AirCube Home" }),
+        h("h1.page-title", { text: "Nimbus-Air" }),
         h("div.spacer"),
         h("button.toolbtn", {
           type: "button",
@@ -224,8 +225,8 @@ export class HomeView {
         }),
         h("button.toolbtn", {
           type: "button",
-          title: "Connect an AirCube",
-          "aria-label": "Connect an AirCube",
+          title: "Connect a Nimbus-Air",
+          "aria-label": "Connect a Nimbus-Air",
           text: "+",
           onclick: onConnect,
         }),

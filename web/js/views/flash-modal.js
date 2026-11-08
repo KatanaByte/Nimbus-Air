@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Flash firmware dialog.
  * Ports aircubetray/aircubeapp/ui/flash_dialog.py to the browser.
  */
@@ -46,7 +47,7 @@ export async function openFlashModal(registry, preselectedDevice) {
     deviceSelect.replaceChildren();
     const devices = registry.devices;
     if (!devices.length) {
-      deviceSelect.append(h("option", { value: "", text: "No AirCube connected" }));
+      deviceSelect.append(h("option", { value: "", text: "No Nimbus-Air connected" }));
     }
     for (const device of devices) {
       deviceSelect.append(
@@ -131,7 +132,7 @@ export async function openFlashModal(registry, preselectedDevice) {
       write(
         reconnected
           ? "Reconnected. Live readings should resume shortly."
-          : "Could not reopen the port automatically. Unplug the AirCube and plug it back in.",
+          : "Could not reopen the port automatically. Unplug the Nimbus-Air and plug it back in.",
         reconnected ? "ok" : "err",
       );
       toast("Firmware flashed");
@@ -173,7 +174,7 @@ export async function openFlashModal(registry, preselectedDevice) {
       text:
         "Flashing takes about 30 seconds over USB. Keep the cable connected until it finishes. Your brightness setting and Zigbee pairing are preserved.",
     }),
-    h("div.field", h("label", { text: "AirCube" }), deviceSelect,
+    h("div.field", h("label", { text: "Device" }), deviceSelect,
       h("button.btn", { type: "button", text: "Refresh", onclick: refreshDevices })),
     h("div.field", h("label", { text: "Firmware" }), firmwareSelect,
       h("button.btn", { type: "button", text: "Local .bin", onclick: () => fileInput.click() })),

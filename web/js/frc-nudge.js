@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* One-time CO2 calibration prompt after an upgrade from firmware <= 2.0.4. */
 
 import { confirmDialog, toast } from "./ui.js";
@@ -56,7 +57,7 @@ export function maybeOfferUpgradeCalibration(device) {
 async function offer(device) {
   const ok = await confirmDialog(
     "Calibrate CO2 after this update",
-    "This AirCube was updated from firmware 2.0.4 or older. Automatic CO2 self-calibration is now off, so a stuffy room cannot slowly drag the reading down. Calibration is required once a year. Move the cube to fresh air or open a window for at least 10 minutes, then press Calibrate. That sets the current reading to 425 ppm. You can always recalibrate the device from the menu.",
+    "This Nimbus-Air was updated from firmware 2.0.4 or older. Automatic CO2 self-calibration is now off, so a stuffy room cannot slowly drag the reading down. Calibration is required once a year. Move the cube to fresh air or open a window for at least 10 minutes, then press Calibrate. That sets the current reading to 425 ppm. You can always recalibrate the device from the menu.",
     "Calibrate now",
     "Later",
   );

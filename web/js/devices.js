@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Device registry: the browser's answer to aircubeapp/manager.py.
  *
  * Web Serial exposes only the USB vendor and product IDs of a port, never the
@@ -88,7 +89,7 @@ export class Device extends EventTarget {
     this.port = port;
     this.link = new SerialLink(port);
 
-    this.name = loadNames()[slot] || (slot === 0 ? "AirCube" : `AirCube ${slot + 1}`);
+    this.name = loadNames()[slot] || (slot === 0 ? "Nimbus-Air" : `Nimbus-Air ${slot + 1}`);
     this.isPro = false;
     this.fwVersion = "";
     this.frcNeeded = false;
@@ -266,7 +267,7 @@ export class Device extends EventTarget {
   }
 
   get modelLabel() {
-    return this.isPro ? "AirCube Pro" : "AirCube Base";
+    return this.isPro ? "Nimbus-Air Pro" : "Nimbus-Air Base";
   }
 
   get lastUpdated() {
@@ -365,7 +366,7 @@ export class Device extends EventTarget {
    */
   async runCo2Frc() {
     if (!this.isPro) {
-      throw new Error("CO2 calibration is only available on AirCube Pro");
+      throw new Error("CO2 calibration is only available on Nimbus-Air Pro");
     }
     if (!this.isConnected) {
       throw new Error("Cube is not connected");

@@ -1,3 +1,4 @@
+/* Nimbus-Air: modified by KatanaByte from StuckAtPrototype/AirCube (Apache-2.0). User-facing names changed. */
 /* Settings: display preferences, per-cube device settings, firmware, about.
  *
  * Follows the tray's settings page (aircubeapp/ui/settings.py) minus the parts
@@ -106,7 +107,7 @@ export class SettingsView {
       h(
         "div.card.settings-group",
         row(
-          "Update an AirCube",
+          "Update a Nimbus-Air",
           h("button.btn", {
             type: "button",
             text: "Flash firmware",
@@ -125,23 +126,23 @@ export class SettingsView {
       h("h2.section-label", { text: "About" }),
       h(
         "div.card.settings-group",
-        row("AirCube Web", h("span.faint", { text: `v${APP_VERSION}` })),
+        row("Nimbus-Air", h("span.faint", { text: `v${APP_VERSION}` })),
         row(
           "Project",
+          h("a", {
+            href: "https://github.com/KatanaByte/Nimbus-Air",
+            target: "_blank",
+            rel: "noreferrer",
+            text: "github.com/KatanaByte/Nimbus-Air",
+          }),
+        ),
+        row(
+          "Based on",
           h("a", {
             href: "https://github.com/StuckAtPrototype/AirCube",
             target: "_blank",
             rel: "noreferrer",
-            text: "github.com/StuckAtPrototype/AirCube",
-          }),
-        ),
-        row(
-          "Made by",
-          h("a", {
-            href: "https://stuckatprototype.com",
-            target: "_blank",
-            rel: "noreferrer",
-            text: "StuckAtPrototype",
+            text: "AirCube by StuckAtPrototype",
           }),
         ),
       ),
