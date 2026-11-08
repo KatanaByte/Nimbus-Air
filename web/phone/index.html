@@ -82,6 +82,7 @@ a{color:var(--accent)}
       This browser can't use Bluetooth. On iPhone, install the free <b>Bluefy</b> app from the App Store and open this page inside it.
     </div>
     <div style="margin-top:14px"><button class="primary" id="connectBtn">Connect</button></div>
+    <p class="note hidden" id="connErr"></p>
     <p class="small" id="lastSeen"></p>
   </section>
 
@@ -291,6 +292,7 @@ function setConn(text, on){ $('conn').textContent=text; $('dot').classList.toggl
 
 async function connect(){
   if(!navigator.bluetooth){ $('nobt').classList.remove('hidden'); return; }
+  $('connErr').classList.add('hidden');
   try{
     if(!dev){
       dev = await navigator.bluetooth.requestDevice({
@@ -323,9 +325,17 @@ async function connect(){
     syncHistory();
   }catch(err){
     console.error(err);
-    setConn(err.name==='NotFoundError' ? 'Not connected' : 'Connection failed');
+    const cancelled = err.name==='NotFoundError' && /cancel/i.test(err.message||'');
+    setConn(cancelled ? 'Not connected' : 'Connection failed');
     $('connectBtn').disabled=false;
-    if(err.name!=='NotFoundError') $('connectBtn').textContent='Try again';
+    if(!cancelled){
+      $('connectBtn').textContent='Try again';
+      const m = err.message || err.name || 'Unknown error';
+      let hint = '';
+      if(/disabled|not available|adapter|unsupported/i.test(m)) hint = ' Check that Bluetooth is on. In Brave, enable Web Bluetooth in brave://flags, or use Chrome or Edge.';
+      $('connErr').textContent = 'Could not connect: ' + m + '.' + hint;
+      $('connErr').classList.remove('hidden');
+    }
   }
 }
 function onDisconnected(){
