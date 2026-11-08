@@ -1,4 +1,4 @@
-name: Deploy AirCube Web
+name: Deploy Nimbus-Air Web
 
 # Publishes web/ to GitHub Pages, staging the newest firmware release binaries
 # alongside it so the browser can fetch them same-origin.
@@ -7,7 +7,7 @@ name: Deploy AirCube Web
 
 on:
   push:
-    branches: [master]
+    branches: [Nimbus-Air]
     paths:
       - "web/**"
       - "scripts/build_web_manifest.py"
