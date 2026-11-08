@@ -169,13 +169,16 @@ const AC = (() => {
   // How many windows older `seq` is than `newest`, handling wrap.
   function seqAge(newest, seq){ return ((newest - seq) % SEQ_MOD + SEQ_MOD) % SEQ_MOD; }
 
-  // Color bands from the AirCube README (VOC Level) and common indoor CO2 guidance.
-  const VOC_BANDS=[15,50,100,200], CO2_BANDS=[600,800,1000,1500];
-  const LABELS=['Excellent','Good','Moderate','Poor','Unhealthy'];
+  // Same 4-level rules as the original AirCube web app (web/js/quality.js),
+  // so the phone, the dashboard and the cube always agree.
+  const LABELS=['Good','OK','Poor','Bad'];
+  const vocQ=ppb=> ppb<=220?0 : ppb<=660?1 : ppb<=2200?2 : 3;     // TVOC in ppb
+  const co2Q=ppm=> ppm<800?0 : ppm<1200?1 : ppm<2000?2 : 3;       // true CO2 in ppm
   const band=(x,b)=>{let i=0;while(i<b.length&&x>b[i])i++;return i;};
+  const VOC_BANDS=[220,660,2200], CO2_BANDS=[800,1200,2000];
   function quality(live){
-    const vb=band(live.voc,VOC_BANDS);
-    const cb=live.pro&&live.co2>0?band(live.co2,CO2_BANDS):-1;
+    const vb=vocQ(live.tvoc);
+    const cb=live.pro&&live.co2>0?co2Q(live.co2):-1;
     const worst=Math.max(vb,cb);
     return { level:worst, label:LABELS[worst], driver: cb>vb ? 'co2' : 'voc', vb, cb };
   }
@@ -199,7 +202,7 @@ let dev=null, ch={}, info=null, live=null, syncing=false, pendingSync=null, brTi
 let metric='co2', rangeH=24;
 
 /* ---------- formatting ---------- */
-const QCOL=['var(--q0)','var(--q1)','var(--q2)','var(--q3)','var(--q4)'];
+const QCOL=['var(--q0)','var(--q2)','var(--q3)','var(--q4)'];
 const temp=c=> store.unit==='F' ? c*9/5+32 : c;
 const tUnit=()=> '°'+store.unit;
 const fmt=(x,d=0)=> (x==null||isNaN(x)) ? '—' : x.toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d});
@@ -222,8 +225,8 @@ function renderLive(){
   $('orb').style.setProperty('--orb', QCOL[q.level]);
   $('verdict').textContent = q.label;
   $('verdictSub').textContent = q.driver==='co2'
-    ? `CO₂ ${fmt(live.co2)} ppm` + (q.level>=2 ? ' · open a window' : '')
-    : `VOC level ${fmt(live.voc)}` + (q.level>=3 ? ' · consider ventilating' : '');
+    ? `CO₂ ${fmt(live.co2)} ppm` + (q.level>=2 ? ' · open a window' : q.level===1 ? ' · a little fresh air would help' : '')
+    : `TVOC ${fmt(live.tvoc)} ppb` + (q.level>=2 ? ' · open a window' : q.level===1 ? ' · a little fresh air would help' : '');
   $('warm').classList.toggle('hidden', live.uptimeMs > 180000);
 
   const tiles=[
@@ -231,8 +234,8 @@ function renderLive(){
     ['Humidity', fmt(live.hum,0), '%', null],
   ];
   if(live.pro) tiles.push(['CO₂', fmt(live.co2), 'ppm', q.cb]);
-  tiles.push(['VOC level', fmt(live.voc), '/ 500', q.vb]);
-  tiles.push(['TVOC', fmt(live.tvoc), 'ppb', null]);
+  tiles.push(['VOC level', fmt(live.voc), '/ 500', null]);
+  tiles.push(['TVOC', fmt(live.tvoc), 'ppb', q.vb]);
   tiles.push(live.pro ? ['Light', fmt(live.lux,0), 'lux', null] : ['eCO₂ (est.)', fmt(live.eco2), 'ppm', null]);
   $('tiles').innerHTML = tiles.map(([k,v,u,b])=>`<div class="tile"><div class="k">${k}</div>
     <div class="v">${v}<span class="u">${u}</span></div>
