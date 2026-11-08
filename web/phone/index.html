@@ -248,7 +248,9 @@ function slotsInRange(){
   return Object.values(store.slots).filter(s=>s[0]>=from).sort((a,b)=>a[0]-b[0]);
 }
 function renderChart(){
-  const m=METRICS[metric], pts=slotsInRange(), el=$('chart');
+  // CO2 under 300 ppm is sensor warm-up, not real air (outdoors is ~420), so skip it
+  // the same way the original app does (CO2_VALID_FLOOR = 300).
+  const m=METRICS[metric], pts=slotsInRange().filter(p=> metric!=='co2' || p[11]>=300), el=$('chart');
   if(pts.length<2){ el.innerHTML=`<div class="empty">${Object.keys(store.slots).length ? 'No readings in this time range yet.' : 'Connect and sync to see history. The cube keeps the last 7 days.'}</div>`; return; }
   const W=340,H=170,L=34,R=6,T=8,B=20, now=Date.now(), from=now-rangeH*36e5;
   const avg=pts.map(p=>m.conv(p[1+m.i])), lo=pts.map(p=>m.conv(p[2+m.i])), hi=pts.map(p=>m.conv(p[3+m.i]));
@@ -304,7 +306,13 @@ async function connect(){
     }
     setConn('Connecting…');
     $('connectBtn').disabled=true;
-    const server = await dev.gatt.connect();
+    // The cube allows one connection; after a page refresh the old link can
+    // linger for a few seconds, so retry a few times before giving up.
+    let server;
+    for(let i=0;;i++){
+      try{ server = await dev.gatt.connect(); break; }
+      catch(e){ if(i>=3) throw e; setConn(`Retrying… (${i+1}/3)`); await new Promise(r=>setTimeout(r,2500)); }
+    }
     const svc = await server.getPrimaryService(AC.UUIDS.svc);
     for(const k of ['info','live','hreq','hdata','bright']) ch[k]=await svc.getCharacteristic(AC.UUIDS[k]);
 
@@ -333,9 +341,10 @@ async function connect(){
     $('connectBtn').disabled=false;
     if(!cancelled){
       $('connectBtn').textContent='Try again';
-      const m = err.message || err.name || 'Unknown error';
+      const m = (err.message || err.name || 'Unknown error').replace(/\.+$/,'');
       let hint = '';
       if(/disabled|not available|adapter|unsupported/i.test(m)) hint = ' Check that Bluetooth is on. In Brave, enable Web Bluetooth in brave://flags, or use Chrome or Edge.';
+      else if(/GATT|unknown reason|disconnect|network/i.test(m)) hint = ' The cube may still be holding an old connection. Wait 30 seconds, or unplug it for 5 seconds, then try again.';
       $('connErr').textContent = 'Could not connect: ' + m + '.' + hint;
       $('connErr').classList.remove('hidden');
     }
