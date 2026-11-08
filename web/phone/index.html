@@ -225,8 +225,8 @@ function renderLive(){
   $('orb').style.setProperty('--orb', QCOL[q.level]);
   $('verdict').textContent = q.label;
   $('verdictSub').textContent = q.driver==='co2'
-    ? `CO₂ ${fmt(live.co2)} ppm` + (q.level>=2 ? ' · crack a window, babe' : q.level===1 ? ' · a little fresh air would help' : '')
-    : `TVOC ${fmt(live.tvoc)} ppb` + (q.level>=2 ? ' · crack a window, babe' : q.level===1 ? ' · a little fresh air would help' : '');
+    ? `CO₂ ${fmt(live.co2)} ppm` + (q.level>=2 ? ' · crack a window babe' : q.level===1 ? ' · a little fresh air would help' : '')
+    : `TVOC ${fmt(live.tvoc)} ppb` + (q.level>=2 ? ' · crack a window babe' : q.level===1 ? ' · a little fresh air would help' : '');
   $('warm').classList.toggle('hidden', live.uptimeMs > 180000);
 
   const tiles=[
