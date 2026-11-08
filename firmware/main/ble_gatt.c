@@ -46,7 +46,7 @@
 
 static const char *TAG = "ble_gatt";
 
-#define DEVICE_NAME "AirCube"
+#define DEVICE_NAME "Nimbus-Air"
 
 /* ── UUIDs (little-endian byte order for BLE_UUID128_INIT) ───────────────
  * Full form: A17C0DEx-1D0F-4E7C-8E4B-2A3D5F6B7C80 */
