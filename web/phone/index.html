@@ -120,7 +120,7 @@ a{color:var(--accent)}
     <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
   </section>
 
-  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 6</p>
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 7</p>
 </div>
 
 <script id="core">
@@ -407,32 +407,47 @@ function setBrightness(v){
 /* ---------- history sync ---------- */
 function onHistoryFrame(e){
   if(!pendingSync) return;
+  pendingSync.touch();
   const f=AC.parseFrame(e.target.value);
-  if(f.type===1) pendingSync.slots.push(...f.slots);
+  if(f.type===1){ pendingSync.slots.push(...f.slots); pendingSync.frames++; }
   else if(f.type===2) pendingSync.resolve();
-  else if(f.type===3) pendingSync.reject(Object.assign(new Error('history error'),{code:f.data}));
+  else if(f.type===3) pendingSync.reject(Object.assign(new Error(f.data===1?'cube busy':f.data===2?'cube says nobody is listening':'cube error '+f.data),{code:f.data}));
 }
-function streamOnce(after){
+// One history request. Gives up only after `quietMs` with no frames, so a long
+// 7-day history isn't cut off halfway.
+function streamOnce(after, quietMs=10000){
   return new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>{ pendingSync=null; reject(new Error('timeout')); }, 45000);
-    const p={ slots:[], resolve:()=>{clearTimeout(timer); pendingSync=null; resolve(p.slots);},
-              reject:e=>{clearTimeout(timer); pendingSync=null; reject(e);} };
-    pendingSync=p;
-    bleWrite(ch.hreq, AC.historyRequest(after)).catch(p.reject);
+    let timer;
+    const p={ slots:[], frames:0,
+      touch:()=>{ clearTimeout(timer); timer=setTimeout(()=>{ pendingSync=null; reject(Object.assign(new Error(p.frames?`stopped after ${p.frames} frames`:'no reply from cube'),{code:'quiet'})); }, quietMs); },
+      resolve:()=>{ clearTimeout(timer); pendingSync=null; resolve(p.slots); },
+      reject:e=>{ clearTimeout(timer); pendingSync=null; reject(e); } };
+    pendingSync=p; p.touch();
+    // Try write-with-response first; some iPhone browsers only manage plain writes.
+    const req=AC.historyRequest(after);
+    bleWrite(ch.hreq, req).catch(()=>ch.hreq.writeValue(req)).catch(e=>p.reject(Object.assign(new Error('request write failed: '+errText(e)),{code:'write'})));
   });
 }
 async function syncHistory(){
   if(syncing||!ch.hreq) return;
   syncing=true; renderSyncState();
+  let why='';
   try{
     info = AC.parseInfo(await ch.info.readValue());
     if(info.newest===AC.EMPTY){ store.lastSync=Date.now(); return; }
     const after = store.lastSeq ?? AC.EMPTY;
     let slots=[];
     if(after!==info.newest){
-      for(let attempt=0;;attempt++){
+      for(let attempt=1;;attempt++){
         try{ slots=await streamOnce(after); break; }
-        catch(e){ if(e.code===1 && attempt<4){ await new Promise(r=>setTimeout(r,1500)); continue; } throw e; }
+        catch(e){
+          why=e.message||errText(e);
+          if(attempt>=4) throw e;
+          $('syncState').textContent=`Retrying sync (${attempt}/3)…`;
+          // "Nobody listening" or silence: on iPhone the subscription can lag, so re-subscribe first.
+          if(e.code===2 || e.code==='quiet'){ try{ await ch.hdata.startNotifications(); }catch(_){} }
+          await new Promise(r=>setTimeout(r, e.code===1 ? 1500 : 1000));
+        }
       }
     }
     if(slots.length){
@@ -442,7 +457,7 @@ async function syncHistory(){
       store.lastSeq=newest;
     }
     store.lastSync=Date.now(); prune(); save();
-  }catch(e){ console.error(e); $('syncState').textContent='Sync failed'; syncing=false; return; }
+  }catch(e){ console.error(e); $('syncState').textContent='Sync failed: '+(why||e.message||errText(e)); syncing=false; return; }
   finally{ if(syncing){ syncing=false; renderSyncState(); } }
   renderChart();
 }
