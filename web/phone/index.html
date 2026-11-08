@@ -120,7 +120,7 @@ a{color:var(--accent)}
     <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
   </section>
 
-  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 7</p>
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.<br>Nimbus-Air phone app · version 8</p>
 </div>
 
 <script id="core">
@@ -307,13 +307,33 @@ function step(label, fn, ms=8000){
 function errText(e){
   if(e==null) return 'no details';
   if(typeof e==='string') return e;
+  if(typeof e==='number') return 'code '+e;
   const parts=[e.name,e.message,e.code!=null?'code '+e.code:''].filter(Boolean);
   if(parts.length) return parts.join(': ');
   try{ const j=JSON.stringify(e); if(j && j!=='{}') return j; }catch(_){}
   const s=String(e); return s==='[object Object]' ? 'empty error, no details' : s;
 }
-// Some iPhone browsers lack writeValueWithResponse; fall back to writeValue.
-const bleWrite=(c,data)=> c.writeValueWithResponse ? c.writeValueWithResponse(data) : c.writeValue(data);
+// Writing bytes: Chrome/Edge accept any form, but some iPhone browsers only
+// manage certain ones. Try the forms in turn; remember which one worked.
+let writeWay=null;
+async function bleWrite(c, bytes){
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset+u8.byteLength);
+  const ways = [
+    ['with-response, bytes', ()=>c.writeValueWithResponse(u8)],
+    ['with-response, buffer', ()=>c.writeValueWithResponse(ab)],
+    ['plain, buffer', ()=>c.writeValue(ab)],
+    ['plain, bytes', ()=>c.writeValue(u8)],
+    ['plain, view', ()=>c.writeValue(new DataView(ab))],
+  ].filter(([name])=> !name.startsWith('with-response') || typeof c.writeValueWithResponse==='function');
+  if(writeWay){ const w=ways.find(x=>x[0]===writeWay); if(w){ try{ return await w[1](); }catch(e){ writeWay=null; } } }
+  const tried=[];
+  for(const [name,fn] of ways){
+    try{ const r=await fn(); writeWay=name; return r; }
+    catch(e){ tried.push(name+' → '+errText(e)); }
+  }
+  throw Object.assign(new Error(tried.join('; ')),{name:'WriteError'});
+}
 
 async function connect(){
   if(!navigator.bluetooth){ $('nobt').classList.remove('hidden'); return; }
@@ -401,7 +421,7 @@ function showBrightness(v){ $('br').value=v; $('brVal').textContent = v===0?'Off
 function setBrightness(v){
   $('brVal').textContent = v==0?'Off':v+'%';
   clearTimeout(brTimer);
-  brTimer=setTimeout(()=>{ ch.bright && bleWrite(ch.bright, Uint8Array.of(Number(v))).catch(console.error); }, 150);
+  brTimer=setTimeout(()=>{ ch.bright && bleWrite(ch.bright, Uint8Array.of(Number(v))).catch(e=>{ console.error(e); $('brVal').textContent='Could not set: '+(e.message||errText(e)); }); }, 150);
 }
 
 /* ---------- history sync ---------- */
@@ -425,7 +445,7 @@ function streamOnce(after, quietMs=10000){
     pendingSync=p; p.touch();
     // Try write-with-response first; some iPhone browsers only manage plain writes.
     const req=AC.historyRequest(after);
-    bleWrite(ch.hreq, req).catch(()=>ch.hreq.writeValue(req)).catch(e=>p.reject(Object.assign(new Error('request write failed: '+errText(e)),{code:'write'})));
+    bleWrite(ch.hreq, req).catch(e=>p.reject(Object.assign(new Error('request write failed: '+(e.message||errText(e))),{code:'write'})));
   });
 }
 async function syncHistory(){
@@ -457,6 +477,7 @@ async function syncHistory(){
       store.lastSeq=newest;
     }
     store.lastSync=Date.now(); prune(); save();
+    if(writeWay && !/send mode/.test($('devInfo').textContent)) $('devInfo').textContent += ` · send mode: ${writeWay}`;
   }catch(e){ console.error(e); $('syncState').textContent='Sync failed: '+(why||e.message||errText(e)); syncing=false; return; }
   finally{ if(syncing){ syncing=false; renderSyncState(); } }
   renderChart();
