@@ -149,10 +149,12 @@ You need the populated PCB, the printed case and three M2 x 5 mm self-tapping sc
 <!-- PLACEHOLDER: edit as you go. -->
 
 - [x] Rebrand web app and phone app to Nimbus-Air
+- [x] Phone app: auto-retry connection, ratings match the cube
 - [ ] Change the Bluetooth name in firmware to Nimbus-Air
 - [ ] Design my own cloud-themed case
 - [ ] Redesign the web dashboard layout
 - [ ] Rename Zigbee model identifier
+- [ ] Native iPhone app (Swift + CoreBluetooth): home-screen icon, auto-reconnect, widget, air quality alerts
 
 ---
 
