@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14181a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Nimbus-Air</title>
+<style>
+:root{
+  --bg:#f6f3ee; --card:#ffffff; --ink:#1d2326; --muted:#6b7378; --line:#e4dfd7;
+  --accent:#2f6f5e; --accent-ink:#ffffff;
+  --q0:#2e9e6a; --q1:#7bb33a; --q2:#e0b52a; --q3:#e57a2c; --q4:#d1453b; --qn:#9aa3a8;
+  --band:rgba(47,111,94,.14);
+  --radius:18px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --num: ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14181a; --card:#1d2326; --ink:#eef0f0; --muted:#98a2a6; --line:#2c3438;
+         --accent:#5cbf9f; --accent-ink:#0d1a16; --band:rgba(92,191,159,.18); }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.4;
+  padding:env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+.wrap{max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 0 10px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+.pill{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--qn)}
+.dot.on{background:var(--q0)}
+button{font:inherit;border:0;border-radius:12px;padding:10px 16px;cursor:pointer;background:var(--line);color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);font-weight:600}
+button:disabled{opacity:.5}
+.card{background:var(--card);border-radius:var(--radius);padding:18px;margin:12px 0;border:1px solid var(--line)}
+.hero{text-align:center;padding:28px 18px}
+.orb{width:132px;height:132px;border-radius:50%;margin:0 auto 14px;background:var(--qn);
+  box-shadow:0 0 0 10px color-mix(in srgb, var(--orb, var(--qn)) 18%, transparent), 0 12px 40px color-mix(in srgb, var(--orb, var(--qn)) 45%, transparent);
+  background:radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--orb, var(--qn)) 55%, white), var(--orb, var(--qn)) 70%);
+  transition:background .8s, box-shadow .8s}
+.verdict{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:15px;margin-top:4px}
+.note{font-size:14px;color:var(--muted);background:var(--bg);border-radius:12px;padding:10px 12px;margin-top:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.tile .k{font-size:13px;color:var(--muted)}
+.tile .v{font-family:var(--num);font-size:26px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .u{font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
+.tile .s{font-size:12px;margin-top:2px;font-weight:600}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h2{font-size:17px;margin:0}
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:2px;overflow-x:auto}
+.seg button{background:transparent;padding:6px 10px;font-size:14px;border-radius:8px;white-space:nowrap;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:14px 0 6px}
+svg{display:block;width:100%;height:auto;margin-top:12px}
+.axis{font-size:10px;fill:var(--muted);font-family:var(--font)}
+.grid-l{stroke:var(--line);stroke-width:1}
+.small{font-size:13px;color:var(--muted)}
+.empty{padding:40px 0;text-align:center;color:var(--muted);font-size:14px}
+.hidden{display:none!important}
+.welcome h2{font-size:20px;margin-bottom:8px}
+.welcome p{color:var(--muted);margin:8px 0}
+.welcome ol{padding-left:20px;color:var(--muted);margin:10px 0}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:18px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Nimbus-Air</h1>
+    <div class="pill"><span class="dot" id="dot"></span><span id="conn">Not connected</span></div>
+  </header>
+
+  <section class="card welcome" id="welcome">
+    <h2>Connect to your cube</h2>
+    <p>Plug the cube in and keep your phone nearby. Tap Connect, then pick your cube (<b>Nimbus-Air</b> or <b>AirCube</b>) from the list.</p>
+    <div class="note hidden" id="nobt">
+      This browser can't use Bluetooth. On iPhone, install the free <b>Bluefy</b> app from the App Store and open this page inside it.
+    </div>
+    <div style="margin-top:14px"><button class="primary" id="connectBtn">Connect</button></div>
+    <p class="small" id="lastSeen"></p>
+  </section>
+
+  <section class="card hero hidden" id="hero">
+    <div class="orb" id="orb"></div>
+    <div class="verdict" id="verdict">—</div>
+    <div class="sub" id="verdictSub"></div>
+    <div class="note hidden" id="warm">Sensor is warming up. Readings settle after about 3 minutes.</div>
+  </section>
+
+  <section class="grid hidden" id="tiles"></section>
+
+  <section class="card hidden" id="lightCard">
+    <div class="row"><h2>Glow brightness</h2><span class="small" id="brVal">—</span></div>
+    <input type="range" id="br" min="0" max="100" step="1" value="30">
+    <div class="seg" id="brPresets"></div>
+  </section>
+
+  <section class="card" id="histCard">
+    <div class="row"><h2>History</h2><span class="small" id="syncState"></span></div>
+    <div class="seg" id="metricSeg" style="margin-top:12px"></div>
+    <div class="seg" id="rangeSeg" style="margin-top:8px"></div>
+    <div id="chart"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="syncBtn" disabled>Sync now</button>
+      <button id="csvBtn">Export CSV</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>Settings</h2></div>
+    <div class="row" style="margin-top:12px"><span>Temperature</span>
+      <div class="seg" id="unitSeg"></div></div>
+    <p class="small" id="devInfo" style="margin-top:12px"></p>
+    <div class="row" style="margin-top:6px"><button id="discBtn" class="hidden">Disconnect</button></div>
+  </section>
+
+  <p class="foot">Everything stays on this phone. Nothing is uploaded.</p>
+</div>
+
+<script id="core">
+/* ---------- AirCube BLE protocol v1 (docs/BLE_GATT_PROTOCOL.md) ---------- */
+const AC = (() => {
+  const U = p => `${p}-1d0f-4e7c-8e4b-2a3d5f6b7c80`;
+  const UUIDS = { svc:U('a17c0de0'), info:U('a17c0de1'), live:U('a17c0de2'),
+                  hreq:U('a17c0de3'), hdata:U('a17c0de4'), bright:U('a17c0de5') };
+  const EMPTY = 0xFFFF, SEQ_MOD = 0xFFFF; // sequences run 0..0xFFFE then wrap
+
+  function parseInfo(dv){
+    return { proto:dv.getUint8(0), pro:dv.getUint8(1)===1,
+      fw:`${dv.getUint8(2)}.${dv.getUint8(3)}.${dv.getUint8(4)}`,
+      capacity:dv.getUint16(6,true), count:dv.getUint16(8,true),
+      windowS:dv.getUint16(10,true), newest:dv.getUint16(12,true) };
+  }
+  function parseLive(dv){
+    return { temp:dv.getInt16(0,true)/100, hum:dv.getUint16(2,true)/100,
+      voc:dv.getUint16(4,true), eco2:dv.getUint16(6,true), tvoc:dv.getUint16(8,true),
+      co2:dv.getUint16(10,true), lux:dv.getUint16(12,true)/10,
+      aqi:dv.getUint8(14), pro:(dv.getUint8(15)&1)===1, uptimeMs:dv.getUint32(16,true) };
+  }
+  // Slot values: [tAvg,tMin,tMax, hAvg,hMin,hMax, vocAvg,vocMin,vocMax, co2Avg,co2Min,co2Max, tvocAvg,tvocMin,tvocMax]
+  function parseSlot(dv, o){
+    const v=[];
+    for(let i=0;i<3;i++) v.push(dv.getInt16(o+2+i*2,true)/100);
+    for(let i=0;i<3;i++) v.push(dv.getInt16(o+8+i*2,true)/100);
+    for(let i=0;i<3;i++) v.push(dv.getUint16(o+14+i*2,true));
+    for(let i=0;i<3;i++) v.push(dv.getUint16(o+20+i*2,true));
+    for(let i=0;i<3;i++) v.push(dv.getUint16(o+26+i*2,true));
+    return { seq:dv.getUint16(o,true), v };
+  }
+  function parseFrame(dv){
+    const f = { type:dv.getUint8(0), count:dv.getUint8(1), data:dv.getUint16(2,true), slots:[] };
+    if(f.type===1){
+      for(let i=0;i<f.count;i++){
+        const o=4+i*32; if(o+32>dv.byteLength) break;
+        const s=parseSlot(dv,o); if(s.seq!==EMPTY) f.slots.push(s);
+      }
+    }
+    return f;
+  }
+  function historyRequest(afterSeq){
+    const b=new Uint8Array(4); b[0]=1; b[1]=0; b[2]=afterSeq&0xFF; b[3]=(afterSeq>>8)&0xFF; return b;
+  }
+  // How many windows older `seq` is than `newest`, handling wrap.
+  function seqAge(newest, seq){ return ((newest - seq) % SEQ_MOD + SEQ_MOD) % SEQ_MOD; }
+
+  // Color bands from the AirCube README (VOC Level) and common indoor CO2 guidance.
+  const VOC_BANDS=[15,50,100,200], CO2_BANDS=[600,800,1000,1500];
+  const LABELS=['Excellent','Good','Moderate','Poor','Unhealthy'];
+  const band=(x,b)=>{let i=0;while(i<b.length&&x>b[i])i++;return i;};
+  function quality(live){
+    const vb=band(live.voc,VOC_BANDS);
+    const cb=live.pro&&live.co2>0?band(live.co2,CO2_BANDS):-1;
+    const worst=Math.max(vb,cb);
+    return { level:worst, label:LABELS[worst], driver: cb>vb ? 'co2' : 'voc', vb, cb };
+  }
+  return { UUIDS, EMPTY, parseInfo, parseLive, parseFrame, historyRequest, seqAge, quality, band, VOC_BANDS, CO2_BANDS, LABELS };
+})();
+if (typeof module!=='undefined') module.exports=AC;
+</script>
+
+<script>
+/* ---------- storage (this phone only) ---------- */
+const KEY='nimbus.v1';
+const store = (()=>{ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } })();
+store.slots ||= {};             // seq -> [ts, ...15 values]
+store.unit ||= 'F';
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+function prune(){ const cut=Date.now()-60*864e5; for(const k in store.slots) if(store.slots[k][0]<cut) delete store.slots[k]; }
+
+/* ---------- state ---------- */
+const $=id=>document.getElementById(id);
+let dev=null, ch={}, info=null, live=null, syncing=false, pendingSync=null, brTimer=null;
+let metric='co2', rangeH=24;
+
+/* ---------- formatting ---------- */
+const QCOL=['var(--q0)','var(--q1)','var(--q2)','var(--q3)','var(--q4)'];
+const temp=c=> store.unit==='F' ? c*9/5+32 : c;
+const tUnit=()=> '°'+store.unit;
+const fmt=(x,d=0)=> (x==null||isNaN(x)) ? '—' : x.toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d});
+function ago(ms){ const m=Math.round(ms/6e4); if(m<1) return 'just now'; if(m<60) return m+' min ago';
+  const h=Math.round(m/60); return h<48 ? h+' hr ago' : Math.round(h/24)+' days ago'; }
+
+const METRICS={
+  co2:{ label:()=> info&&!info.pro ? 'eCO₂':'CO₂', i:9, unit:()=> 'ppm', conv:x=>x, d:0 },
+  voc:{ label:()=> 'VOC', i:6, unit:()=> '', conv:x=>x, d:0 },
+  temp:{ label:()=> 'Temp', i:0, unit:tUnit, conv:temp, d:1 },
+  hum:{ label:()=> 'Humidity', i:3, unit:()=> '%', conv:x=>x, d:0 },
+  tvoc:{ label:()=> 'TVOC', i:12, unit:()=> 'ppb', conv:x=>x, d:0 },
+};
+
+/* ---------- UI: live ---------- */
+function renderLive(){
+  if(!live) return;
+  const q=AC.quality(live);
+  $('hero').classList.remove('hidden'); $('tiles').classList.remove('hidden');
+  $('orb').style.setProperty('--orb', QCOL[q.level]);
+  $('verdict').textContent = q.label;
+  $('verdictSub').textContent = q.driver==='co2'
+    ? `CO₂ ${fmt(live.co2)} ppm` + (q.level>=2 ? ' · open a window' : '')
+    : `VOC level ${fmt(live.voc)}` + (q.level>=3 ? ' · consider ventilating' : '');
+  $('warm').classList.toggle('hidden', live.uptimeMs > 180000);
+
+  const tiles=[
+    ['Temperature', fmt(temp(live.temp),1), tUnit(), null],
+    ['Humidity', fmt(live.hum,0), '%', null],
+  ];
+  if(live.pro) tiles.push(['CO₂', fmt(live.co2), 'ppm', q.cb]);
+  tiles.push(['VOC level', fmt(live.voc), '/ 500', q.vb]);
+  tiles.push(['TVOC', fmt(live.tvoc), 'ppb', null]);
+  tiles.push(live.pro ? ['Light', fmt(live.lux,0), 'lux', null] : ['eCO₂ (est.)', fmt(live.eco2), 'ppm', null]);
+  $('tiles').innerHTML = tiles.map(([k,v,u,b])=>`<div class="tile"><div class="k">${k}</div>
+    <div class="v">${v}<span class="u">${u}</span></div>
+    ${b!=null?`<div class="s" style="color:${QCOL[b]}">${AC.LABELS[b]}</div>`:''}</div>`).join('');
+}
+
+/* ---------- UI: chart ---------- */
+function slotsInRange(){
+  const now=Date.now(), from=now-rangeH*36e5;
+  return Object.values(store.slots).filter(s=>s[0]>=from).sort((a,b)=>a[0]-b[0]);
+}
+function renderChart(){
+  const m=METRICS[metric], pts=slotsInRange(), el=$('chart');
+  if(pts.length<2){ el.innerHTML=`<div class="empty">${Object.keys(store.slots).length ? 'No readings in this time range yet.' : 'Connect and sync to see history. The cube keeps the last 7 days.'}</div>`; return; }
+  const W=340,H=170,L=34,R=6,T=8,B=20, now=Date.now(), from=now-rangeH*36e5;
+  const avg=pts.map(p=>m.conv(p[1+m.i])), lo=pts.map(p=>m.conv(p[2+m.i])), hi=pts.map(p=>m.conv(p[3+m.i]));
+  let min=Math.min(...lo), max=Math.max(...hi); if(max-min<1e-6){min-=1;max+=1;}
+  const pad=(max-min)*.1; min-=pad; max+=pad;
+  const x=t=>L+(t-from)/(now-from)*(W-L-R), y=v=>T+(1-(v-min)/(max-min))*(H-T-B);
+  const gapMs=((info&&info.windowS)||300)*1000*2.5;
+  // split into continuous runs
+  const runs=[]; let cur=[];
+  pts.forEach((p,i)=>{ if(i&&p[0]-pts[i-1][0]>gapMs){runs.push(cur);cur=[];} cur.push(i); }); runs.push(cur);
+  let band='', line='';
+  for(const r of runs){
+    if(r.length<1) continue;
+    band+=`<polygon fill="var(--band)" points="${r.map(i=>`${x(pts[i][0]).toFixed(1)},${y(hi[i]).toFixed(1)}`).join(' ')} ${r.slice().reverse().map(i=>`${x(pts[i][0]).toFixed(1)},${y(lo[i]).toFixed(1)}`).join(' ')}"/>`;
+    line+=`<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${r.map(i=>`${x(pts[i][0]).toFixed(1)},${y(avg[i]).toFixed(1)}`).join(' ')}"/>`;
+  }
+  let grid='';
+  for(let k=0;k<=3;k++){ const v=min+(max-min)*k/3, yy=y(v);
+    grid+=`<line class="grid-l" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis" x="${L-4}" y="${yy+3}" text-anchor="end">${fmt(v,m.d&&max-min<10?1:0)}</text>`; }
+  const tl=t=> rangeH<=24 ? new Date(t).toLocaleTimeString([], {hour:'numeric'}) : new Date(t).toLocaleDateString([], {weekday:'short'});
+  const xl=[from, from+(now-from)/2, now].map((t,i)=>`<text class="axis" x="${x(t)}" y="${H-4}" text-anchor="${['start','middle','end'][i]}">${i===2?'now':tl(t)}</text>`).join('');
+  const last=avg[avg.length-1];
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${m.label()} history">${grid}${band}${line}${xl}</svg>
+    <div class="small" style="margin-top:6px">${m.label()} · latest ${fmt(last,m.d)} ${m.unit()} · range ${fmt(Math.min(...lo),m.d)}–${fmt(Math.max(...hi),m.d)} · shaded = min/max per 5 min</div>`;
+}
+function renderSyncState(){
+  $('syncState').textContent = syncing ? 'Syncing…' : store.lastSync ? 'Synced '+ago(Date.now()-store.lastSync) : '';
+}
+
+/* ---------- segmented controls ---------- */
+function seg(el, items, get, set){
+  el.innerHTML=''; items.forEach(([v,l])=>{ const b=document.createElement('button'); b.textContent=typeof l==='function'?l():l;
+    b.className=get()===v?'on':''; b.onclick=()=>{ set(v); seg(el,items,get,set); }; el.appendChild(b); });
+}
+function buildControls(){
+  seg($('metricSeg'), Object.keys(METRICS).map(k=>[k,METRICS[k].label]), ()=>metric, v=>{metric=v; renderChart();});
+  seg($('rangeSeg'), [[6,'6h'],[24,'24h'],[72,'3d'],[168,'7d'],[720,'30d']], ()=>rangeH, v=>{rangeH=v; renderChart();});
+  seg($('unitSeg'), [['F','°F'],['C','°C']], ()=>store.unit, v=>{store.unit=v; save(); buildControls(); renderLive(); renderChart();});
+  seg($('brPresets'), [[0,'Off'],[10,'10%'],[30,'30%'],[60,'60%'],[100,'100%']], ()=>Number($('br').value), v=>{$('br').value=v; setBrightness(v);});
+}
+
+/* ---------- Bluetooth ---------- */
+function setConn(text, on){ $('conn').textContent=text; $('dot').classList.toggle('on', !!on); }
+
+async function connect(){
+  if(!navigator.bluetooth){ $('nobt').classList.remove('hidden'); return; }
+  try{
+    if(!dev){
+      dev = await navigator.bluetooth.requestDevice({
+        filters:[{services:[AC.UUIDS.svc]},{namePrefix:'Nimbus'},{name:'AirCube'}], optionalServices:[AC.UUIDS.svc] });
+      dev.addEventListener('gattserverdisconnected', onDisconnected);
+    }
+    setConn('Connecting…');
+    $('connectBtn').disabled=true;
+    const server = await dev.gatt.connect();
+    const svc = await server.getPrimaryService(AC.UUIDS.svc);
+    for(const k of ['info','live','hreq','hdata','bright']) ch[k]=await svc.getCharacteristic(AC.UUIDS[k]);
+
+    info = AC.parseInfo(await ch.info.readValue());
+    $('devInfo').textContent = `Nimbus-Air ${info.pro?'Pro':'Base'} · firmware ${info.fw} · ${info.count} history points on device`;
+
+    ch.live.addEventListener('characteristicvaluechanged', e=>{ live=AC.parseLive(e.target.value); store.lastLive={...live, at:Date.now()}; renderLive(); });
+    live = AC.parseLive(await ch.live.readValue()); renderLive();
+    await ch.live.startNotifications();
+
+    ch.bright.addEventListener('characteristicvaluechanged', e=>showBrightness(e.target.value.getUint8(0)));
+    showBrightness((await ch.bright.readValue()).getUint8(0));
+    await ch.bright.startNotifications();
+
+    ch.hdata.addEventListener('characteristicvaluechanged', onHistoryFrame);
+    await ch.hdata.startNotifications();
+
+    $('welcome').classList.add('hidden'); $('lightCard').classList.remove('hidden');
+    $('syncBtn').disabled=false; $('discBtn').classList.remove('hidden');
+    setConn('Connected', true); buildControls();
+    syncHistory();
+  }catch(err){
+    console.error(err);
+    setConn(err.name==='NotFoundError' ? 'Not connected' : 'Connection failed');
+    $('connectBtn').disabled=false;
+    if(err.name!=='NotFoundError') $('connectBtn').textContent='Try again';
+  }
+}
+function onDisconnected(){
+  setConn('Disconnected'); ch={}; syncing=false; renderSyncState();
+  $('welcome').classList.remove('hidden'); $('connectBtn').disabled=false; $('connectBtn').textContent='Reconnect';
+  $('lightCard').classList.add('hidden'); $('syncBtn').disabled=true; $('discBtn').classList.add('hidden');
+  if(pendingSync){ pendingSync.reject(new Error('disconnected')); pendingSync=null; }
+}
+
+/* ---------- brightness ---------- */
+function showBrightness(v){ $('br').value=v; $('brVal').textContent = v===0?'Off':v+'%'; buildControls(); }
+function setBrightness(v){
+  $('brVal').textContent = v==0?'Off':v+'%';
+  clearTimeout(brTimer);
+  brTimer=setTimeout(()=>{ ch.bright && ch.bright.writeValueWithResponse(Uint8Array.of(Number(v))).catch(console.error); }, 150);
+}
+
+/* ---------- history sync ---------- */
+function onHistoryFrame(e){
+  if(!pendingSync) return;
+  const f=AC.parseFrame(e.target.value);
+  if(f.type===1) pendingSync.slots.push(...f.slots);
+  else if(f.type===2) pendingSync.resolve();
+  else if(f.type===3) pendingSync.reject(Object.assign(new Error('history error'),{code:f.data}));
+}
+function streamOnce(after){
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{ pendingSync=null; reject(new Error('timeout')); }, 45000);
+    const p={ slots:[], resolve:()=>{clearTimeout(timer); pendingSync=null; resolve(p.slots);},
+              reject:e=>{clearTimeout(timer); pendingSync=null; reject(e);} };
+    pendingSync=p;
+    ch.hreq.writeValueWithResponse(AC.historyRequest(after)).catch(p.reject);
+  });
+}
+async function syncHistory(){
+  if(syncing||!ch.hreq) return;
+  syncing=true; renderSyncState();
+  try{
+    info = AC.parseInfo(await ch.info.readValue());
+    if(info.newest===AC.EMPTY){ store.lastSync=Date.now(); return; }
+    const after = store.lastSeq ?? AC.EMPTY;
+    let slots=[];
+    if(after!==info.newest){
+      for(let attempt=0;;attempt++){
+        try{ slots=await streamOnce(after); break; }
+        catch(e){ if(e.code===1 && attempt<4){ await new Promise(r=>setTimeout(r,1500)); continue; } throw e; }
+      }
+    }
+    if(slots.length){
+      // Device has no clock: newest slot = now, each older slot one window earlier.
+      const newest=slots[slots.length-1].seq, now=Date.now(), w=info.windowS*1000;
+      for(const s of slots) store.slots[s.seq]=[now - AC.seqAge(newest,s.seq)*w, ...s.v];
+      store.lastSeq=newest;
+    }
+    store.lastSync=Date.now(); prune(); save();
+  }catch(e){ console.error(e); $('syncState').textContent='Sync failed'; syncing=false; return; }
+  finally{ if(syncing){ syncing=false; renderSyncState(); } }
+  renderChart();
+}
+
+/* ---------- CSV ---------- */
+function exportCsv(){
+  const rows=Object.values(store.slots).sort((a,b)=>a[0]-b[0]);
+  if(!rows.length){ alert('No history saved yet.'); return; }
+  const head=['time','temp_avg_C','temp_min_C','temp_max_C','humidity_avg','humidity_min','humidity_max',
+    'voc_avg','voc_min','voc_max','co2_avg_ppm','co2_min_ppm','co2_max_ppm','tvoc_avg_ppb','tvoc_min_ppb','tvoc_max_ppb'];
+  const csv=[head.join(',')].concat(rows.map(r=>[new Date(r[0]).toISOString(),...r.slice(1)].join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='nimbus-air-history.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- boot ---------- */
+$('connectBtn').onclick=connect;
+$('syncBtn').onclick=syncHistory;
+$('csvBtn').onclick=exportCsv;
+$('discBtn').onclick=()=>dev&&dev.gatt.connected&&dev.gatt.disconnect();
+$('br').oninput=e=>setBrightness(e.target.value);
+if(!navigator.bluetooth) $('nobt').classList.remove('hidden');
+if(store.lastLive) $('lastSeen').textContent=`Last reading ${ago(Date.now()-store.lastLive.at)}.`;
+buildControls(); renderChart(); renderSyncState();
+setInterval(renderSyncState, 60000);
+setInterval(()=>{ if(ch.hreq) syncHistory(); }, 10*60000);
+</script>
+</body>
+</html>
